@@ -1,7 +1,6 @@
 import pandas as pd
-import sklearn as skl
-from sklearn.tree import DecisionTreeClassifier
 import numpy as np
+import matplotlib.pyplot as plt
 
 class Node:
     def __init__(self, features, examples):
@@ -109,6 +108,27 @@ def get_classifier_ID3(df):
     ID3(tree,df)
     return tree
 
+def ID3_k(cur_node, df, k):
+    if len(cur_node.examples) == 0:
+        return
+    c = majorityClass(cur_node.examples, df)
+    cur_node.classification = c[0]
+    if c[1] == 1 or len(cur_node.features) == 0 or len(cur_node.examples) <= k :
+        return
+    res_SF = selectFeature(cur_node.features, cur_node.examples, df)
+    cur_node.f ,cur_node.mid = res_SF[0], res_SF[1]
+    cur_node.s1 = new_node_s1(cur_node.examples, cur_node.features, cur_node.f)
+    cur_node.s2 = new_node_s2(cur_node.examples, cur_node.features, cur_node.f)
+    ID3_k(cur_node.s1, df, k)
+    ID3_k(cur_node.s2, df, k)
+
+def get_classifier_ID3_k(df, k):
+    features = df.keys().drop(['diagnosis'])
+    examples = list(range(0, len(df['diagnosis'])-1))
+    tree = Node(features, examples)
+    ID3_k(tree, df, k)
+    return tree
+
 def is_right_answer(tree, df_test, i):
     if tree.s1 == None and tree.s1 == None:
         return  df_test['diagnosis'][i] == tree.classification
@@ -157,3 +177,13 @@ if __name__ == "__main__":
 
     print("the accuracy of ID3 tree is: ", accuracy)
     print("the accuracy of ID3 tree on train is: ", accuracy_train)
+
+    ks = [3,9,27]
+    accuracies =[]
+    for k in ks:
+        t = get_classifier_ID3_k(df, k)
+        a = get_classifier_accuracy(t, df_test)
+        accuracies.append(a)
+    print(accuracies)
+    plt.scatter(ks,accuracies)
+    plt.show()
