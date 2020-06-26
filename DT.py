@@ -12,42 +12,62 @@ class Node:
         self.features = features # the features who left. Important Type = Index
         self.examples = examples # current examples. Important Type = List
 
+def IG_dynamic(examples_val, tj):
+    total_e = len(examples_val)
+    count_s1, count_s2 = 0, 0
+    count_s1_t, count_s1_f, count_s2_t, count_s2_f = 0, 0, 0, 0
+    H1, H2 = 0, 0
+    for e in examples_val:
+        if e[0] < tj:
+            count_s1 += 1
+            if e[1] == 1:
+                count_s1_t += 1
+            else:
+                count_s1_f += 1
+        else:
+            count_s2 += 1
+            if e[1] == 1:
+                count_s2_t += 1
+            else:
+                count_s2_f += 1
+    if count_s1_t == 0 or count_s1_f == 0 or count_s1 == 0:
+        H1 = 0
+    else:
+        rat_s1_t = count_s1_t / count_s1
+        rat_s1_f = count_s1_f / count_s1
+        H1 = -(rat_s1_t * np.log2(rat_s1_t) + rat_s1_f * np.log2(rat_s1_f))
+    if count_s2_t == 0 or count_s2_f == 0 or count_s2 == 0:
+        H2 = 0
+    else:
+        rat_s2_t = count_s2_t / count_s2
+        rat_s2_f = count_s2_f / count_s2
+        H2 = -(rat_s2_t * np.log2(rat_s2_t) + rat_s2_f * np.log2(rat_s2_f))
+    IG = 1 - ((count_s1 / total_e) * H1 + (count_s2 / total_e) * H2)
+    return IG
+
+def best_IG_mid(f, examples, df):
+    examples_val = []
+    best_IG = -1
+    best_tj = 0
+    for e in examples:
+        examples_val.append((df[f][e], df["diagnosis"][e]))
+    examples_val.sort()
+    k = len(examples)
+    for j in range(0,k-1):
+        tj = (examples_val[j][0]+examples_val[j+1][0])/2
+        IG = IG_dynamic(examples_val, tj)
+        if IG > best_IG:
+            best_IG = IG
+            best_tj = tj
+    return best_IG, best_tj
+
+
 # select feature with the best IG, return the function and his mid value
 def selectFeature(features, examples, df):
     total_e = len(examples)
     max_IG, best_f, best_mid= -1, None, None
     for f in features:
-        mid = (df[f].max()-df[f].min())/2
-        count_s1, count_s2 = 0, 0
-        count_s1_t, count_s1_f, count_s2_t, count_s2_f = 0, 0, 0, 0
-        H1, H2 = 0, 0
-        for e in examples:
-            if df[f][e] < mid:
-                count_s1 += 1
-                if df["diagnosis"][e] == 1:
-                    count_s1_t += 1
-                else:
-                    count_s1_f += 1
-            else:
-                count_s2 += 1
-                if df["diagnosis"][e] == 1:
-                    count_s2_t += 1
-                else:
-                    count_s2_f += 1
-        if count_s1_t == 0 or count_s1_f == 0 or count_s1 == 0:
-            H1 =0
-        else:
-            rat_s1_t = count_s1_t / count_s1
-            rat_s1_f = count_s1_f / count_s1
-            H1 = -(rat_s1_t * np.log2(rat_s1_t) + rat_s1_f * np.log2(rat_s1_f))
-        if count_s2_t == 0 or count_s2_f == 0 or count_s2 == 0:
-            H2 =0
-        else:
-            rat_s2_t = count_s2_t / count_s2
-            rat_s2_f = count_s2_f / count_s2
-            H2 = -(rat_s2_t * np.log2(rat_s2_t) + rat_s2_f * np.log2(rat_s2_f))
-
-        IG = 1 - ( (count_s1/total_e)*H1 + (count_s2/total_e)*H2 )
+        IG, mid = best_IG_mid(f, examples, df)
         if IG > max_IG:
             max_IG = IG
             best_f = f
@@ -71,10 +91,8 @@ def majorityClass(examples, df):
 # build new node to s1, when know the best feature to classify with.
 # gets the features of his father so need to cut the best feature of it.
 # return the new Node
-def new_node_s1(examples, features, f):
+def new_node_s1(examples, features, f, mid):
     new_examples = []
-    # print(f)
-    mid = (df[f].max() - df[f].min()) / 2
     for e in examples:
         if df[f][e] < mid:
             new_examples.append(e)
@@ -84,9 +102,8 @@ def new_node_s1(examples, features, f):
 # build new node to s2, when know the best feature to classify with.
 # gets the features of his father so need to cut the best feature of it.
 # return the new Node
-def new_node_s2(examples, features, f):
+def new_node_s2(examples, features, f, mid):
     new_examples = []
-    mid = (df[f].max() - df[f].min()) / 2
     for e in examples:
         if df[f][e] >= mid:
             new_examples.append(e)
@@ -103,8 +120,8 @@ def ID3(cur_node, df):
         return
     res_SF = selectFeature(cur_node.features, cur_node.examples, df)
     cur_node.f ,cur_node.mid = res_SF[0], res_SF[1]
-    cur_node.s1 = new_node_s1(cur_node.examples, cur_node.features, cur_node.f)
-    cur_node.s2 = new_node_s2(cur_node.examples, cur_node.features, cur_node.f)
+    cur_node.s1 = new_node_s1(cur_node.examples, cur_node.features, cur_node.f, cur_node.mid)
+    cur_node.s2 = new_node_s2(cur_node.examples, cur_node.features, cur_node.f, cur_node.mid)
     ID3(cur_node.s1, df)
     ID3(cur_node.s2, df)
 
@@ -126,8 +143,8 @@ def ID3_k(cur_node, df, k):
         return
     res_SF = selectFeature(cur_node.features, cur_node.examples, df)
     cur_node.f ,cur_node.mid = res_SF[0], res_SF[1]
-    cur_node.s1 = new_node_s1(cur_node.examples, cur_node.features, cur_node.f)
-    cur_node.s2 = new_node_s2(cur_node.examples, cur_node.features, cur_node.f)
+    cur_node.s1 = new_node_s1(cur_node.examples, cur_node.features, cur_node.f, cur_node.mid)
+    cur_node.s2 = new_node_s2(cur_node.examples, cur_node.features, cur_node.f, cur_node.mid)
     ID3_k(cur_node.s1, df, k)
     ID3_k(cur_node.s2, df, k)
 
@@ -143,8 +160,6 @@ def get_classifier_ID3_k(df, k):
 def is_right_answer(tree, df_test, i):
     if tree.s1 == None and tree.s1 == None:
         return  df_test['diagnosis'][i] == tree.classification
-    # print(tree.f)
-    # print(i)
     if df_test[tree.f][i] < tree.mid:
         return is_right_answer(tree.s1, df_test, i)
     else:
