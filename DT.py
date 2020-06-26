@@ -111,6 +111,34 @@ def get_classifier_accuracy(tree, df_test):
     count_t = sum(1 for e in examples if is_right_answer(tree, df_test, e))
     return count_t/total
 
+def leaves(tree, epsilon, test, train, e):
+    if tree.s1 is None and tree.s2 is None:
+        t = sum(1 for ex in tree.examples if train['diagnosis'][ex])
+        return t, len(tree.examples) - t
+
+    if abs(test[tree.f][e] - tree.mid) <= epsilon[tree.f]:
+        t1, f1 = leaves(tree.s1, epsilon, test, train, e)
+        t2, f2 = leaves(tree.s2, epsilon, test, train, e)
+        return t1+t2, f1+f2
+    elif test[tree.f][e] <= tree.mid:
+        return leaves(tree.s1, epsilon, test, train, e)
+    else:
+        return leaves(tree.s2, epsilon, test, train, e)
+
+
+def epsilon_classify(tree, epsilon, test, train, e):
+    t, f = leaves(tree, epsilon, test, train, e)
+    return 1 if t >= f else 0
+
+
+def epsilon_accuracy(tree, test, train):
+    examples = list(range(0, len(test['diagnosis'])))
+    features = test.keys().drop(['diagnosis'])
+    eps = {f: 0.1 * np.std(train[f]) for f in features}
+
+    matches = sum(1 if epsilon_classify(tree, eps, test, train, e) == test['diagnosis'][e] else 0 for e in examples)
+    return matches / len(examples)
+
 
 if __name__ == "__main__":
     data = pd.read_csv("train.csv")
@@ -143,3 +171,7 @@ if __name__ == "__main__":
     plt.xticks(range(0, 28, 3))
     plt.yticks(np.arange(92, 94, 0.5))
     plt.show()
+
+    t9 = get_classifier_ID3(df, 9)
+    eps_acc = epsilon_accuracy(t9, df_test, df)
+    print("T9 epsilon accuracy: {:.2%}".format(eps_acc))
