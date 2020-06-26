@@ -36,210 +36,110 @@ def IG(examples, threshold):
     return entropy(ex) - s1_ratio * entropy(s1) - s2_ratio * entropy(s2)
 
 
-def sf(features, examples, df):
-    best_ig, feature, threshold = -1, None, -1
-    for f in features:
-        vals = sorted([(df[f][e], df['diagnosis'][e]) for e in examples], key=lambda x: x[0])
-        thresholds = [(vals[i][0] + vals[i+1][0])/2 for i in range(len(vals)-1)]
-        for t in thresholds:
-            gain = IG(vals, t)
-            if gain > best_ig:
-                best_ig = gain
-                feature = f
-                threshold = t
-
-    return feature, threshold
-
-
-# select feature with the best IG, return the function and his mid value
+# select feature with the best IG, return the function and its mid value
 def selectFeature(features, examples, df):
-    total_e = len(examples)
-    max_IG, best_f, best_mid = -1, None, None
+    max_ig, best_f, best_mid = -1, None, None
     for f in features:
-        mid = (df[f].max()-df[f].min())/2
-        count_s1, count_s2 = 0, 0
-        count_s1_t, count_s1_f, count_s2_t, count_s2_f = 0, 0, 0, 0
-        H1, H2 = 0, 0
-        for e in examples:
-            if df[f][e] < mid:
-                count_s1 += 1
-                if df["diagnosis"][e] == 1:
-                    count_s1_t += 1
-                else:
-                    count_s1_f += 1
-            else:
-                count_s2 += 1
-                if df["diagnosis"][e] == 1:
-                    count_s2_t += 1
-                else:
-                    count_s2_f += 1
-        if count_s1_t == 0 or count_s1_f == 0 or count_s1 == 0:
-            H1 =0
-        else:
-            rat_s1_t = count_s1_t / count_s1
-            rat_s1_f = count_s1_f / count_s1
-            H1 = -(rat_s1_t * np.log2(rat_s1_t) + rat_s1_f * np.log2(rat_s1_f))
-        if count_s2_t == 0 or count_s2_f == 0 or count_s2 == 0:
-            H2 =0
-        else:
-            rat_s2_t = count_s2_t / count_s2
-            rat_s2_f = count_s2_f / count_s2
-            H2 = -(rat_s2_t * np.log2(rat_s2_t) + rat_s2_f * np.log2(rat_s2_f))
+        # ig, mid = best_IG_mid(f, examples, df)
+        vals = sorted([(df[f][e], df['diagnosis'][e]) for e in examples], key=lambda x: x[0])
+        thresholds = [(vals[i][0] + vals[i + 1][0]) / 2 for i in range(len(vals) - 1)]
 
-        IG = 1 - ( (count_s1/total_e)*H1 + (count_s2/total_e)*H2 )
-        if IG > max_IG:
-            max_IG = IG
-            best_f = f
-            best_mid = mid
+        for t in thresholds:
+            ig = IG(vals, t)
+            if ig > max_ig:
+                max_ig = ig
+                best_f = f
+                best_mid = t
+
     return best_f, best_mid
 
-#return the majority of the classification of examples and the ratio(to know if all one sided class)
+
+# return the majority of the classification of examples and the ratio(to know if all one sided class)
 def majorityClass(examples, df):
     total = len(examples)
-    count_t = sum(1 for e in examples if df['diagnosis'][e])
+    true = sum(1 for e in examples if df['diagnosis'][e] == 1)
 
-    if count_t >= total - count_t:
-        return 1, count_t/total
+    if true >= total - true:
+        return 1, true/total
     else:
-        return 0, (total - count_t)/total
+        return 0, (total-true)/total
 
-# build new node to s1, when know the best feature to classify with.
-# gets the features of his father so need to cut the best feature of it.
-# return the new Node
-def new_node_s1(examples, features, f):
-    new_examples = []
-    # print(f)
-    mid = (df[f].max() - df[f].min()) / 2
-    for e in examples:
-        if df[f][e] < mid:
-            new_examples.append(e)
-    new_features = features.drop([f])
-    return Node(new_features, new_examples)
 
-# build new node to s2, when know the best feature to classify with.
-# gets the features of his father so need to cut the best feature of it.
-# return the new Node
-def new_node_s2(examples, features, f):
-    new_examples = []
-    mid = (df[f].max() - df[f].min()) / 2
-    for e in examples:
-        if df[f][e] >= mid:
-            new_examples.append(e)
-    new_features = features.drop([f])
-    return Node(new_features, new_examples)
-
-# pretty much the class TDIDT algorithm
-def ID3(cur_node, df):
+def ID3(cur_node, df, k):
     if len(cur_node.examples) == 0:
         return
-    c = majorityClass(cur_node.examples, df)
-    cur_node.classification = c[0]
-    if c[1] == 1 or len(cur_node.features) == 0:
+    c, ratio = majorityClass(cur_node.examples, df)
+    cur_node.classification = c
+    if ratio == 1 or len(cur_node.examples) <= k:
         return
-    # res_SF = selectFeature(cur_node.features, cur_node.examples, df)
 
-    cur_node.f, cur_node.mid = sf(cur_node.features, cur_node.examples, df)
-    # cur_node.f, cur_node.mid = res_SF[0], res_SF[1]
-    # cur_node.s1 = new_node_s1(cur_node.examples, cur_node.features, cur_node.f)
-    # cur_node.s2 = new_node_s2(cur_node.examples, cur_node.features, cur_node.f)
+    cur_node.f, cur_node.mid = selectFeature(cur_node.features, cur_node.examples, df)
 
     s1 = [e for e in cur_node.examples if df[cur_node.f][e] <= cur_node.mid]
     s2 = [e for e in cur_node.examples if df[cur_node.f][e] > cur_node.mid]
 
-    cur_node.s1 = Node(cur_node.features, s1)
-    cur_node.s2 = Node(cur_node.features, s2)
+    cur_node.s1, cur_node.s2 = Node(cur_node.features, s1), Node(cur_node.features, s2)
+    ID3(cur_node.s1, df, k)
+    ID3(cur_node.s2, df, k)
 
-    ID3(cur_node.s1, df)
-    ID3(cur_node.s2, df)
-
-# build decision tree ID3 with the data df
-def get_classifier_ID3(df):
-    features = df.keys().drop(['diagnosis'])
-    examples = list(range(0, len(df['diagnosis'])))
-    tree = Node(features, examples)
-    ID3(tree,df)
-    return tree
-
-# pretty much the class TDIDT algorithm but when there examples <= k, the node turn to leaf
-def ID3_k(cur_node, df, k):
-    if len(cur_node.examples) == 0:
-        return
-    c = majorityClass(cur_node.examples, df)
-    cur_node.classification = c[0]
-    if c[1] == 1 or len(cur_node.features) == 0 or len(cur_node.examples) <= k:
-        return
-    res_SF = selectFeature(cur_node.features, cur_node.examples, df)
-    cur_node.f, cur_node.mid = res_SF[0], res_SF[1]
-    cur_node.s1 = new_node_s1(cur_node.examples, cur_node.features, cur_node.f)
-    cur_node.s2 = new_node_s2(cur_node.examples, cur_node.features, cur_node.f)
-    ID3_k(cur_node.s1, df, k)
-    ID3_k(cur_node.s2, df, k)
 
 # build decision tree ID3 with the k thing with the data df
-def get_classifier_ID3_k(df, k):
+def get_classifier_ID3(df, k=0):
     features = df.keys().drop(['diagnosis'])
     examples = list(range(0, len(df['diagnosis'])))
     tree = Node(features, examples)
-    ID3_k(tree, df, k)
+    ID3(tree, df, k)
     return tree
+
 
 # check for the example i if is right in the tree
 def is_right_answer(tree, df_test, i):
-    if tree.s1 == None and tree.s2 == None:
+    if tree.s1 is None and tree.s2 is None:
         return df_test['diagnosis'][i] == tree.classification
-    # print(tree.f)
-    # print(i)
+
     if df_test[tree.f][i] <= tree.mid:
         return is_right_answer(tree.s1, df_test, i)
     else:
         return is_right_answer(tree.s2, df_test, i)
 
+
 # check all examples in the tree and return the ratio of accuracy
 def get_classifier_accuracy(tree, df_test):
     examples = list(range(0, len(df_test['diagnosis'])))
-    count_t, count_f = 0, 0
     total = len(df_test['diagnosis'])
-    for e in examples:
-        ans = is_right_answer(tree, df_test, e)
-        if ans:
-            count_t += 1
-        else:
-            count_f += 1
+
+    count_t = sum(1 for e in examples if is_right_answer(tree, df_test, e))
     return count_t/total
 
 
 if __name__ == "__main__":
-    # data = pd.read_csv("test.csv")
-    # df = pd.DataFrame(data)
-    # keys = df.keys().copy()
-    # #keys.delete()
-    # l =keys.drop(['diagnosis'])
-    # print(l)
-    # print(keys)
-    # print(type(keys))
-    # print(df['area_mean'][0])
-    # t_max = df['area_mean'].max()
-    # t_min = df['area_mean'].min()
-    # print(t_max, " ", t_min)
-    # print(len(df['area_mean']))
-
     data = pd.read_csv("train.csv")
     df = pd.DataFrame(data)
     tree = get_classifier_ID3(df)
+
     data_test = pd.read_csv("test.csv")
     df_test = pd.DataFrame(data_test)
+
     accuracy = get_classifier_accuracy(tree, df_test)
     accuracy_train = get_classifier_accuracy(tree, df)
 
-    print("the accuracy of ID3 tree is: ", accuracy)
-    print("the accuracy of ID3 tree on train is: ", accuracy_train)
+    print("the accuracy of ID3 tree on train is: {:.2%}".format(accuracy_train))
+    print("ID3 (No pruning): {:.2%}".format(accuracy))
 
     ks = [3, 9, 27]
     accuracies =[]
     for k in ks:
-        t = get_classifier_ID3_k(df, k)
+        t = get_classifier_ID3(df, k)
         a = get_classifier_accuracy(t, df_test)
-        accuracies.append(a)
+        print("ID3 (k = {}): {:.2%}".format(k, a))
+        accuracies.append(a*100)
     print(accuracies)
-    plt.scatter(ks, accuracies)
+
+    fig, ax = plt.subplots()
+    ax.scatter(ks, accuracies)
+    ax.set_ylabel('Accuracy %')
+    ax.set_xlabel('k val')
+
+    plt.xticks(range(0, 28, 3))
+    plt.yticks(np.arange(92, 94, 0.5))
     plt.show()
