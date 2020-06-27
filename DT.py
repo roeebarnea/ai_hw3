@@ -111,6 +111,7 @@ def get_classifier_accuracy(tree, df_test):
     count_t = sum(1 for e in examples if is_right_answer(tree, df_test, e))
     return count_t/total
 
+
 def leaves(tree, epsilon, test, train, e):
     if tree.s1 is None and tree.s2 is None:
         t = sum(1 for ex in tree.examples if train['diagnosis'][ex])

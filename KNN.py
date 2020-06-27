@@ -22,8 +22,6 @@ class KNN:
             self.data[f] = [normalize(mx, mn, v) for v in train[f]]
             self.norm_limits[f] = (mx, mn)
 
-        return data
-
     def distance(self, data, test, example):
         dist = 0
         for feature in self.data:

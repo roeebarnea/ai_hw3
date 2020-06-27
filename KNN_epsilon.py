@@ -17,13 +17,13 @@ def normalize_train(train):
 
     return data, norm_limits
 
+
 def normalize_test(test, limits):
     features = test.keys().drop(['diagnosis'])
     data = {}
     for f in features:
         mx, mn = limits[f]
         data[f] = [normalize(mx, mn, v) for v in test[f]]
-        # data[f] = [v for v in test[f]]
     return data
 
 
@@ -48,12 +48,13 @@ class KNN:
         f = len(distances) - t
         count = sum(1 for n in knn if n[1])
 
-        return 1 if count >= self.k - count else 0
+        return 1 if count >= len(knn) - count else 0
 
     def accuracy(self, c, data):
         tests = range(len(c))
         matches = sum(1 for t in tests if self.classify(data, t) == c[t])
         return matches / len(tests)
+
 
 class Node:
     def __init__(self, features, examples):
