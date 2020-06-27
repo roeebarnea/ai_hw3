@@ -149,30 +149,33 @@ if __name__ == "__main__":
     data_test = pd.read_csv("test.csv")
     df_test = pd.DataFrame(data_test)
 
-    accuracy = get_classifier_accuracy(tree, df_test)
-    accuracy_train = get_classifier_accuracy(tree, df)
-
-    print("the accuracy of ID3 tree on train is: {:.2%}".format(accuracy_train))
-    print("ID3 (No pruning): {:.2%}".format(accuracy))
-
-    ks = [3, 9, 27]
+    ks = [0, 3, 9, 27]
     accuracies =[]
     for k in ks:
         t = get_classifier_ID3(df, k)
         a = get_classifier_accuracy(t, df_test)
-        print("ID3 (k = {}): {:.2%}".format(k, a))
+        if k == 0:
+            print("ID3 (No pruning): {:.2%}".format(a))
+
         accuracies.append(a*100)
-    print(accuracies)
+    # print(accuracies)
 
     fig, ax = plt.subplots()
-    ax.scatter(ks, accuracies)
+    ax.plot(ks, accuracies, ':o')
     ax.set_ylabel('Accuracy %')
-    ax.set_xlabel('k val')
+    ax.set_xlabel('Minimum examples in node to split')
 
     plt.xticks(range(0, 28, 3))
     plt.yticks(np.arange(92, 94, 0.5))
+    plt.title("ID3 accuracy as a function of minimum node split size")
+
+
+    for x, y in zip(ks, accuracies):
+        if y < 93:
+            ax.annotate("{:.2f}%".format(y), xy=(x, y), textcoords='offset points', xytext=(0, 10), ha='center', size='small')
+        else:
+            ax.annotate("{:.2f}%".format(y), xy=(x, y), textcoords='offset points', xytext=(0, -15), ha='center', size='small')
+
+
     plt.show()
 
-    t9 = get_classifier_ID3(df, 9)
-    eps_acc = epsilon_accuracy(t9, df_test, df)
-    print("T9 epsilon accuracy: {:.2%}".format(eps_acc))

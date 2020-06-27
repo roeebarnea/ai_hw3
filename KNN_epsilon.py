@@ -185,16 +185,14 @@ if __name__ == "__main__":
     norm_test = normalize_test(df_test, limits)
     c_test = [c for c in test_data['diagnosis']]
     res = [0]*len(c_test)
-    # faulty = [140, 143, 160, 161]
     for t in range(len(c_test)):
-    # for t in faulty:
         knn = KNN(t9.epsilon_leaves(norm_test, t), t9.c, t9.train, 9)
         res[t] = knn.classify(norm_test, t)
 
     correct = [t for t in range(len(c_test)) if res[t] == c_test[t]]
     wrong = [t for t in range(len(c_test)) if res[t] != c_test[t]]
     count = len(correct)
-    print("Correct: {} which is {:.2%}".format(count, count/len(c_test)))
+    print("Accuracy of 9NN combined with T9: {:.2%}".format(count/len(c_test)))
 
 
 

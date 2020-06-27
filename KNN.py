@@ -63,12 +63,13 @@ if __name__ == "__main__":
     for k in ks:
         knn.k = k
         accuracy = knn.accuracy(test_data)
-        print("{}NN Accuracy: {:.2%}".format(k, accuracy))
+        if k == 9:
+            print("{}NN Accuracy: {:.2%}".format(k, accuracy))
         accuracies.append(accuracy*100)
-    print(accuracies)
+    # print(accuracies)
 
     fig, ax = plt.subplots()
-    ax.scatter(ks, accuracies)
+    ax.plot(ks, accuracies, ':or')
     ax.set_ylabel('Accuracy %')
     ax.set_xlabel('k choice')
     ax.scatter(ks, accuracies)
@@ -76,9 +77,9 @@ if __name__ == "__main__":
 
     for x, y in zip(ks, accuracies):
         if y < 98:
-            ax.annotate("{:.2f}%".format(y), xy=(x, y), textcoords='offset points', xytext=(0, 10), ha='center')
+            ax.annotate("{:.2f}%".format(y), xy=(x, y), textcoords='offset points', xytext=(0, 10), ha='center', size='x-small')
         else:
-            ax.annotate("{:.2f}%".format(y), xy=(x, y), textcoords='offset points', xytext=(0, -15), ha='center')
+            ax.annotate("{:.2f}%".format(y), xy=(x, y), textcoords='offset points', xytext=(0, -15), ha='center', size='x-small')
 
     plt.show()
 
